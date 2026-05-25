@@ -7,6 +7,19 @@ const startWorker = async () => {
 
     try {
         const connection = await amqp.connect(process.env.RABBITMQ_URL || 'amqp://guest:guest@localhost:5672');
+
+        // Reconnect automatically if the connection drops unexpectedly.
+        // Without these handlers, the worker would silently hang after a broker restart.
+        connection.on('close', () => {
+            console.error('RabbitMQ connection closed unexpectedly. Reconnecting in 5s...');
+            setTimeout(startWorker, 5000);
+        });
+
+        connection.on('error', (err) => {
+            console.error('RabbitMQ connection error:', err.message);
+            // The 'close' event fires after 'error' and will trigger reconnection
+        });
+
         const channel = await connection.createChannel();
         
         await channel.assertQueue('user_activities', { durable: true });
@@ -23,8 +36,10 @@ const startWorker = async () => {
                     console.error('Error processing message:', error);
                     
                     if (error instanceof SyntaxError) {
+                        // Malformed JSON will never recover — discard it (dead-letter)
                         channel.nack(msg, false, false);
                     } else {
+                        // Transient errors (e.g., DB unavailable) — requeue for retry
                         channel.nack(msg, false, true);
                     }
                 }
@@ -36,4 +51,4 @@ const startWorker = async () => {
     }
 };
 
-startWorker();
+startWorker();

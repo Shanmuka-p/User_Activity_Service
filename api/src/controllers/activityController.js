@@ -1,4 +1,5 @@
 const Joi = require('joi');
+const { randomUUID } = require('crypto');
 const { publishActivity } = require('../rabbitmq');
 
 const activitySchema = Joi.object({
@@ -19,7 +20,11 @@ const ingestActivity = async (req, res) => {
     }
 
     try {
-        publishActivity(value);
+        // Generate a unique ID at ingestion time.
+        // This ensures every event has a stable identity from the moment it enters
+        // the system, enabling idempotent processing in the consumer.
+        const event = { id: randomUUID(), ...value };
+        publishActivity(event);
         res.status(202).json({ message: 'Event successfully received and queued.' });
     } catch (err) {
         console.error('Publish Error:', err);
@@ -29,4 +34,4 @@ const ingestActivity = async (req, res) => {
 
 module.exports = {
     ingestActivity
-};
+};
