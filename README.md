@@ -15,7 +15,7 @@ An event-driven microservice for tracking user activities at scale. A REST API i
 ┌──────────────────────────────────────────────────────────────┐
 │                    API Service (Express)                      │
 │                                                              │
-│  1. Rate Limiter Middleware (50 req/min per IP)              │
+│  1. Rate Limiter Middleware (50 req/min per IP)              │◄──── Redis (shared state)
 │  2. Joi Input Validation                                     │
 │  3. Publish to RabbitMQ queue: user_activities               │
 │  4. Return 202 Accepted                                      │
@@ -34,6 +34,8 @@ An event-driven microservice for tracking user activities at scale. A REST API i
 │  2. Save Activity document to MongoDB                        │
 │  3. channel.ack(msg) on success                              │
 │  4. channel.nack(msg) with/without requeue on failure        │
+│     (connection + channel close/error listeners auto-        │
+│      reconnect on broker restarts)                           │
 └──────────────────────────┬───────────────────────────────────┘
                            │ Persist
                            ▼
@@ -58,7 +60,7 @@ An event-driven microservice for tracking user activities at scale. A REST API i
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/<your-username>/User_Activity_Service.git
+git clone https://github.com/Shanmuka-p/User_Activity_Service.git
 cd User_Activity_Service
 
 # 2. Copy environment variables
@@ -75,7 +77,18 @@ All services will start automatically. Docker Compose health checks ensure Rabbi
 | API | http://localhost:3000 |
 | API Health Check | http://localhost:3000/health |
 | RabbitMQ Management UI | http://localhost:15672 (guest / guest) |
+| Redis | redis://localhost:6379 |
 | MongoDB | mongodb://localhost:27017 |
+
+---
+
+## RabbitMQ Management UI
+
+Once the stack is running, open [http://localhost:15672](http://localhost:15672) (credentials: **guest / guest**) to monitor queues and message flow in real time.
+
+![RabbitMQ Management UI — Queues tab showing the user_activities queue with message counts and throughput rates](./docs/screenshots/rabbitmq_queues.png)
+
+> The **Queues and Streams** tab shows the `user_activities` queue (durable). The **Ready**, **Unacked**, and **Total** columns let you verify messages are being consumed correctly. A non-zero **Unacked** count indicates messages being actively processed by the consumer worker.
 
 ---
 
@@ -197,6 +210,7 @@ See [.env.example](./.env.example) for all variables. Copy to `.env` before runn
 |---|---|---|
 | `RABBITMQ_URL` | `amqp://guest:guest@localhost:5672` | RabbitMQ connection string |
 | `DATABASE_URL` | `mongodb://user:password@localhost:27017/activity_db?authSource=admin` | MongoDB connection string |
+| `REDIS_URL` | `redis://localhost:6379` | Redis connection string (distributed rate limiter) |
 | `API_PORT` | `3000` | API service port |
 | `RATE_LIMIT_WINDOW_MS` | `60000` | Rate limit time window in milliseconds |
 | `RATE_LIMIT_MAX_REQUESTS` | `50` | Max requests per window per IP |
@@ -214,8 +228,10 @@ RabbitMQ decouples the API (ingestion) from the Consumer (processing). If the co
 ### 3. Why smart nack — requeue vs dead-letter?
 When the consumer encounters a `SyntaxError` (malformed JSON), it calls `channel.nack(msg, false, false)` — **no requeue**. A malformed message will never become valid JSON, so requeueing it would create an infinite retry loop, consuming resources and never succeeding. For all other errors (transient DB issues), it requeues with `channel.nack(msg, false, true)`.
 
-### 4. Why in-memory sliding window rate limiting?
-A sliding window log prevents burst attacks that exploit fixed-window boundaries. It uses an array of request timestamps per IP, filtering out those older than the window on every request — giving a true per-minute view. An in-memory Map is sufficient for a single-instance deployment. For multi-instance, Redis would be the production choice.
+### 4. Why Redis-backed distributed rate limiting?
+A sliding window log prevents burst attacks that exploit fixed-window boundaries. The rate limiter uses a **Redis sorted set** per IP address, where each member is a request timestamp. An atomic `MULTI` pipeline (`ZREMRANGEBYSCORE` → `ZADD` → `ZCARD` → `EXPIRE`) executes all operations in a single round-trip, making the check both atomic and performant.
+
+Using Redis as the shared store means **all horizontally-scaled API instances share the same rate-limit state** — a client cannot bypass the limit by distributing requests across multiple pods. If Redis becomes unavailable, the middleware **fails open** (allows traffic through) to prioritise availability over strict enforcement, which is the safer default for most APIs.
 
 ### 5. Why MongoDB over MySQL?
 The `payload` field is intentionally schema-less (any valid JSON object). MongoDB's `Mixed` type handles arbitrary payload structures without requiring schema migrations for every new event type — a natural fit for activity tracking.
@@ -234,7 +250,7 @@ User_Activity_Service/
 │   │   ├── controllers/
 │   │   │   └── activityController.js   # Joi validation + publish
 │   │   ├── middlewares/
-│   │   │   └── rateLimiter.js          # Sliding window rate limiter
+│   │   │   └── rateLimiter.js          # Distributed Redis sliding window rate limiter
 │   │   ├── routes/
 │   │   │   └── activityRoutes.js       # Route definitions
 │   │   ├── rabbitmq.js                 # RabbitMQ connection + publish

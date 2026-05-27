@@ -1,11 +1,37 @@
 const request = require('supertest');
 const app = require('../src/server');
 const rabbitmq = require('../src/rabbitmq');
+const { setClient, disconnect } = require('../src/middlewares/rateLimiter');
 
 jest.mock('../src/rabbitmq', () => ({
     connectRabbitMQ: jest.fn().mockResolvedValue(),
     publishActivity: jest.fn()
 }));
+
+// Inject a no-op Redis client so the rate limiter never attempts a real
+// connection during the integration test run.
+beforeAll(() => {
+    const noopClient = {
+        multi: () => {
+            const pipe = {
+                zremrangebyscore: () => pipe,
+                zadd: () => pipe,
+                zcard: () => pipe,
+                expire: () => pipe,
+                exec: async () => [[null, 0], [null, 1], [null, 1], [null, 1]],
+            };
+            return pipe;
+        },
+        zrange: async () => [],
+        on: () => {},
+    };
+    setClient(noopClient);
+});
+
+afterAll(async () => {
+    await disconnect();
+});
+
 
 // A fully valid base payload for reuse across tests
 const validPayload = {
