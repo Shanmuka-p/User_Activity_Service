@@ -92,6 +92,35 @@ Once the stack is running, open [http://localhost:15672](http://localhost:15672)
 
 ---
 
+## Postman Collection
+
+A ready-to-use Postman collection is included at [`examples/User_Activity_Service.postman_collection.json`](./examples/User_Activity_Service.postman_collection.json).
+
+### How to Import
+
+1. Open **Postman**
+2. Click **Import** → **File** → select `examples/User_Activity_Service.postman_collection.json`
+3. The collection `User Activity Service` will appear in your sidebar
+4. Make sure the stack is running (`docker-compose up --build`) then send requests
+
+### What's Included
+
+| Request | Method | Expected Response |
+|---|---|---|
+| Service Health Check | `GET /health` | `200 {"status":"UP"}` |
+| Valid activity — `user_login` | `POST /api/v1/activities` | `202 Accepted` |
+| Valid activity — `page_view` | `POST /api/v1/activities` | `202 Accepted` |
+| Valid activity — `purchase_completed` (nested payload) | `POST /api/v1/activities` | `202 Accepted` |
+| Missing required fields | `POST /api/v1/activities` | `400 Bad Request` + `details[]` |
+| Invalid UUID | `POST /api/v1/activities` | `400 Bad Request` |
+| Invalid timestamp format | `POST /api/v1/activities` | `400 Bad Request` |
+| Empty `eventType` | `POST /api/v1/activities` | `400 Bad Request` |
+| Rate limit exceeded | `POST /api/v1/activities` | `429 Too Many Requests` + `Retry-After` header |
+
+> **Tip — Testing Rate Limiting:** Use the Postman **Collection Runner** to send the rate-limit request 51+ times in quick succession. After 50 requests within 60 seconds from the same IP, the Redis-backed rate limiter will return `429 Too Many Requests` with a `Retry-After` header indicating when to retry.
+
+---
+
 ## Running Tests
 
 ### Inside Docker (Recommended — matches CI environment)
@@ -275,7 +304,8 @@ User_Activity_Service/
 │   ├── Dockerfile
 │   └── package.json
 ├── examples/
-│   └── curl_examples.sh                # Ready-to-run curl commands
+│   ├── curl_examples.sh                # Ready-to-run curl commands
+│   └── User_Activity_Service.postman_collection.json  # Postman collection (import into Postman)
 ├── ARCHITECTURE.md                     # Mermaid sequence diagram
 ├── API_DOCS.md                         # OpenAPI 3.0 specification
 ├── docker-compose.yml

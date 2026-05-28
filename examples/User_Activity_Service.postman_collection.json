@@ -1,0 +1,383 @@
+{
+  "info": {
+    "_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "name": "User Activity Service",
+    "description": "Complete Postman collection for the User Activity Service API.\n\nThis service ingests user activity events via REST, validates them, and publishes them to RabbitMQ for async processing by the Consumer Worker which persists them to MongoDB.\n\n## Setup\n1. Start the stack: `docker-compose up --build`\n2. Wait ~90s for all health checks to pass\n3. Import this collection into Postman\n4. All requests use the `base_url` variable (default: http://localhost:3000)\n\n## Endpoints\n- `GET  /health`               — Service health check\n- `POST /api/v1/activities`    — Ingest a user activity event",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000",
+      "type": "string",
+      "description": "Base URL of the API service. Change this if running on a different host/port."
+    },
+    {
+      "key": "valid_user_id",
+      "value": "123e4567-e89b-12d3-a456-426614174000",
+      "type": "string",
+      "description": "A valid UUID v4 for testing"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health Check",
+      "item": [
+        {
+          "name": "GET /health — Service is UP",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/health",
+              "host": ["{{base_url}}"],
+              "path": ["health"]
+            },
+            "description": "Returns the operational status of the API service. Used by Docker Compose health checks.\n\nExpected response: `200 OK` with `{ \"status\": \"UP\" }`"
+          },
+          "response": [
+            {
+              "name": "200 OK — Service is healthy",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/health",
+                  "host": ["{{base_url}}"],
+                  "path": ["health"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "body": "{\n    \"status\": \"UP\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Activities",
+      "item": [
+        {
+          "name": "POST /api/v1/activities — Valid event (202 Accepted)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"userId\": \"{{valid_user_id}}\",\n    \"eventType\": \"user_login\",\n    \"timestamp\": \"2023-10-27T10:00:00.000Z\",\n    \"payload\": {\n        \"ipAddress\": \"192.168.1.1\",\n        \"device\": \"desktop\",\n        \"browser\": \"Chrome\"\n    }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/activities",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "activities"]
+            },
+            "description": "Ingests a valid user activity event.\n\n- Validates the payload with Joi (userId must be UUID v4, timestamp must be ISO-8601)\n- Generates a unique `id` for idempotent processing\n- Publishes the event to RabbitMQ `user_activities` queue\n- The Consumer Worker asynchronously persists it to MongoDB\n\nExpected response: `202 Accepted`"
+          },
+          "response": [
+            {
+              "name": "202 Accepted — Event queued",
+              "originalRequest": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"userId\": \"123e4567-e89b-12d3-a456-426614174000\",\n    \"eventType\": \"user_login\",\n    \"timestamp\": \"2023-10-27T10:00:00.000Z\",\n    \"payload\": {\n        \"ipAddress\": \"192.168.1.1\",\n        \"device\": \"desktop\",\n        \"browser\": \"Chrome\"\n    }\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/v1/activities",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "v1", "activities"]
+                }
+              },
+              "status": "Accepted",
+              "code": 202,
+              "_postman_previewlanguage": "json",
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n    \"message\": \"Event successfully received and queued.\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "POST /api/v1/activities — page_view event (202 Accepted)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"userId\": \"{{valid_user_id}}\",\n    \"eventType\": \"page_view\",\n    \"timestamp\": \"2023-10-27T10:05:30.000Z\",\n    \"payload\": {\n        \"page\": \"/dashboard\",\n        \"referrer\": \"/login\",\n        \"sessionId\": \"sess_abc123\"\n    }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/activities",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "activities"]
+            },
+            "description": "Demonstrates that the `payload` field accepts any valid JSON object — the schema is intentionally flexible to support different event types without schema migrations."
+          },
+          "response": []
+        },
+        {
+          "name": "POST /api/v1/activities — purchase event (202 Accepted)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"userId\": \"a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11\",\n    \"eventType\": \"purchase_completed\",\n    \"timestamp\": \"2023-10-27T11:30:00.000Z\",\n    \"payload\": {\n        \"orderId\": \"ORD-98765\",\n        \"amount\": 149.99,\n        \"currency\": \"USD\",\n        \"items\": [\"item_a\", \"item_b\"]\n    }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/activities",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "activities"]
+            },
+            "description": "Another event type with a richer nested payload — arrays and numbers are supported since the `payload` field uses MongoDB's Mixed type."
+          },
+          "response": []
+        },
+        {
+          "name": "POST /api/v1/activities — Missing required fields (400 Bad Request)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"eventType\": \"user_login\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/activities",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "activities"]
+            },
+            "description": "Sends a request missing `userId`, `timestamp`, and `payload`.\n\nJoi validation catches all missing fields and returns descriptive error messages in the `details` array.\n\nExpected response: `400 Bad Request`"
+          },
+          "response": [
+            {
+              "name": "400 Bad Request — Missing fields",
+              "originalRequest": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"eventType\": \"user_login\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/v1/activities",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "v1", "activities"]
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n    \"error\": \"Bad Request\",\n    \"details\": [\n        \"\\\"userId\\\" is required\",\n        \"\\\"timestamp\\\" is required\",\n        \"\\\"payload\\\" is required\"\n    ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "POST /api/v1/activities — Invalid UUID (400 Bad Request)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"userId\": \"not-a-valid-uuid\",\n    \"eventType\": \"user_login\",\n    \"timestamp\": \"2023-10-27T10:00:00.000Z\",\n    \"payload\": {\n        \"device\": \"mobile\"\n    }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/activities",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "activities"]
+            },
+            "description": "Sends a request with a `userId` that is not a valid UUID v4.\n\nExpected response: `400 Bad Request` with a `userId` validation error in `details`."
+          },
+          "response": [
+            {
+              "name": "400 Bad Request — Invalid UUID",
+              "originalRequest": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"userId\": \"not-a-valid-uuid\",\n    \"eventType\": \"user_login\",\n    \"timestamp\": \"2023-10-27T10:00:00.000Z\",\n    \"payload\": { \"device\": \"mobile\" }\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/v1/activities",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "v1", "activities"]
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n    \"error\": \"Bad Request\",\n    \"details\": [\n        \"\\\"userId\\\" must be a valid GUID\"\n    ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "POST /api/v1/activities — Invalid timestamp (400 Bad Request)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"userId\": \"{{valid_user_id}}\",\n    \"eventType\": \"user_login\",\n    \"timestamp\": \"27-10-2023\",\n    \"payload\": {\n        \"device\": \"mobile\"\n    }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/activities",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "activities"]
+            },
+            "description": "Sends a request with a `timestamp` that is not a valid ISO-8601 date string.\n\nExpected response: `400 Bad Request`"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /api/v1/activities — Empty eventType (400 Bad Request)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"userId\": \"{{valid_user_id}}\",\n    \"eventType\": \"\",\n    \"timestamp\": \"2023-10-27T10:00:00.000Z\",\n    \"payload\": {\n        \"device\": \"mobile\"\n    }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/activities",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "activities"]
+            },
+            "description": "Sends a request with an empty string `eventType`. Joi rejects this since `min(1)` is enforced.\n\nExpected response: `400 Bad Request`"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /api/v1/activities — Rate limit test (429 Too Many Requests)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"userId\": \"{{valid_user_id}}\",\n    \"eventType\": \"user_login\",\n    \"timestamp\": \"2023-10-27T10:00:00.000Z\",\n    \"payload\": {\n        \"device\": \"desktop\"\n    }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/activities",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "activities"]
+            },
+            "description": "To trigger a 429 response:\n1. Use Postman Runner to send this request **51+ times** within 60 seconds from the same IP.\n2. After 50 requests the distributed Redis rate limiter will return `429 Too Many Requests` with a `Retry-After` header.\n\nThe rate limit is backed by Redis (distributed), so it applies consistently across all API instances.\n\nExpected response on the 51st request: `429 Too Many Requests` with `Retry-After` header."
+          },
+          "response": [
+            {
+              "name": "429 Too Many Requests — Rate limit exceeded",
+              "originalRequest": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"userId\": \"123e4567-e89b-12d3-a456-426614174000\",\n    \"eventType\": \"user_login\",\n    \"timestamp\": \"2023-10-27T10:00:00.000Z\",\n    \"payload\": { \"device\": \"desktop\" }\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/v1/activities",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "v1", "activities"]
+                }
+              },
+              "status": "Too Many Requests",
+              "code": 429,
+              "_postman_previewlanguage": "json",
+              "header": [
+                { "key": "Content-Type", "value": "application/json" },
+                { "key": "Retry-After", "value": "58" }
+              ],
+              "body": "{\n    \"error\": \"Too Many Requests\"\n}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
