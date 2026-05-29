@@ -219,7 +219,7 @@
           ]
         },
         {
-          "name": "POST /api/v1/activities — Invalid UUID (400 Bad Request) after 10 times",
+          "name": "POST /api/v1/activities — Invalid UUID (400 Bad Request)",
           "request": {
             "method": "POST",
             "header": [
@@ -348,7 +348,7 @@
               "host": ["{{base_url}}"],
               "path": ["api", "v1", "activities"]
             },
-            "description": "To trigger a 429 response:\n1. Use Postman Runner to send this request **51+ times** within 60 seconds from the same IP.\n2. After 50 requests the distributed Redis rate limiter will return `429 Too Many Requests` with a `Retry-After` header.\n\nThe rate limit is backed by Redis (distributed), so it applies consistently across all API instances.\n\nExpected response on the 51st request: `429 Too Many Requests` with `Retry-After` header."
+            "description": "To trigger a 429 response:\n1. Use Postman Runner to send this request **10+ times** within 60 seconds from the same IP.\n2. After 10 requests the distributed Redis rate limiter will return `429 Too Many Requests` with a `Retry-After` header.\n\nThe rate limit is backed by Redis (distributed), so it applies consistently across all API instances.\n\nExpected response on the 11th request: `429 Too Many Requests` with `Retry-After` header."
           },
           "response": [
             {

@@ -117,7 +117,7 @@ A ready-to-use Postman collection is included at [`examples/User_Activity_Servic
 | Empty `eventType` | `POST /api/v1/activities` | `400 Bad Request` |
 | Rate limit exceeded | `POST /api/v1/activities` | `429 Too Many Requests` + `Retry-After` header |
 
-> **Tip — Testing Rate Limiting:** Use the Postman **Collection Runner** to send the rate-limit request 51+ times in quick succession. After 50 requests within 60 seconds from the same IP, the Redis-backed rate limiter will return `429 Too Many Requests` with a `Retry-After` header indicating when to retry.
+> **Tip — Testing Rate Limiting:** Use the Postman **Collection Runner** to send the rate-limit request 10+ times in quick succession. After 50 requests within 60 seconds from the same IP, the Redis-backed rate limiter will return `429 Too Many Requests` with a `Retry-After` header indicating when to retry.
 
 ---
 
