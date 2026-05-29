@@ -219,7 +219,7 @@
           ]
         },
         {
-          "name": "POST /api/v1/activities — Invalid UUID (400 Bad Request)",
+          "name": "POST /api/v1/activities — Invalid UUID (400 Bad Request) after 10 times",
           "request": {
             "method": "POST",
             "header": [

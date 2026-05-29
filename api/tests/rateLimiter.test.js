@@ -136,7 +136,7 @@ describe('Rate Limiter Middleware (Redis-backed)', () => {
 
     it('should allow requests up to the maximum limit', async () => {
         const ip = '10.1.0.2';
-        const maxRequests = parseInt(process.env.RATE_LIMIT_MAX_REQUESTS, 10) || 50;
+        const maxRequests = parseInt(process.env.RATE_LIMIT_MAX_REQUESTS, 10) || 10;
         const next = jest.fn();
 
         for (let i = 0; i < maxRequests; i++) {
