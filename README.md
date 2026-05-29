@@ -74,7 +74,7 @@ All services will start automatically. Docker Compose health checks ensure Rabbi
 
 | Service | URL |
 |---|---|
-| API | http://localhost:3000 |
+| API | http://localhost:3000 (Dashboard) |
 | API Health Check | http://localhost:3000/health |
 | RabbitMQ Management UI | http://localhost:15672 (guest / guest) |
 | Redis | redis://localhost:6379 |

@@ -141,3 +141,13 @@ describe('GET /health', () => {
         expect(response.body).toHaveProperty('status', 'UP');
     });
 });
+
+describe('GET /', () => {
+    it('should return 200 with HTML content', async () => {
+        const response = await request(app).get('/');
+
+        expect(response.status).toBe(200);
+        expect(response.text).toContain('<!DOCTYPE html>');
+        expect(response.text).toContain('User Activity Service');
+    });
+});

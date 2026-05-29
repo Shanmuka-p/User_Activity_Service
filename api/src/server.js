@@ -1,6 +1,7 @@
 const express = require('express');
 const activityRoutes = require('./routes/activityRoutes');
 const { connectRabbitMQ } = require('./rabbitmq');
+const { getDashboardHtml } = require('./dashboard');
 
 const app = express();
 
@@ -9,6 +10,10 @@ app.use('/api/v1/activities', activityRoutes);
 
 app.get('/health', (req, res) => {
     res.status(200).json({ status: 'UP' });
+});
+
+app.get('/', (req, res) => {
+    res.send(getDashboardHtml());
 });
 
 const PORT = process.env.API_PORT || 3000;

@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Activity Service - API Dashboard</title>
+    <!-- Google Fonts: Outfit & Space Grotesk -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-gradient: linear-gradient(135deg, #0b0f19 0%, #020617 100%);
+            --card-bg: rgba(15, 23, 42, 0.65);
+            --card-border: rgba(255, 255, 255, 0.06);
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --primary: #10b981;
+            --primary-glow: rgba(16, 185, 129, 0.15);
+            --accent: #818cf8;
+            --accent-glow: rgba(129, 140, 248, 0.15);
+            --danger: #ef4444;
+            --warning: #f59e0b;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: var(--bg-gradient);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem 1.5rem;
+            overflow-x: hidden;
+        }
+
+        /* Ambient background glow */
+        .glow-orb-1 {
+            position: absolute;
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, rgba(16, 185, 129, 0.08) 0%, rgba(16, 185, 129, 0) 70%);
+            top: -100px;
+            left: -100px;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        .glow-orb-2 {
+            position: absolute;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(129, 140, 248, 0.08) 0%, rgba(129, 140, 248, 0) 70%);
+            bottom: -150px;
+            right: -100px;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 800px;
+            z-index: 1;
+        }
+
+        /* Glassmorphism Card styling */
+        .dashboard-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 24px;
+            padding: 3rem;
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 2.5rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            padding-bottom: 2rem;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .brand-logo {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 700;
+            color: #020617;
+            font-size: 1.25rem;
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
+        }
+
+        .title-area h1 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.75rem;
+            font-weight: 700;
+            background: linear-gradient(to right, #ffffff, #94a3b8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.02em;
+        }
+
+        .title-area p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            margin-top: 4px;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--primary-glow);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            color: var(--primary);
+            padding: 8px 16px;
+            border-radius: 100px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background-color: var(--primary);
+            border-radius: 50%;
+            display: inline-block;
+            box-shadow: 0 0 10px var(--primary);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(0.95);
+                box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+            }
+            70% {
+                transform: scale(1);
+                box-shadow: 0 0 0 8px rgba(16, 185, 129, 0);
+            }
+            100% {
+                transform: scale(0.95);
+                box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+            }
+        }
+
+        .services-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1.25rem;
+            margin-bottom: 2.5rem;
+        }
+
+        .service-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            border-radius: 16px;
+            padding: 1.25rem 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            transition: background 0.2s ease, border-color 0.2s ease;
+        }
+
+        .service-card:hover {
+            background: rgba(255, 255, 255, 0.04);
+            border-color: rgba(255, 255, 255, 0.08);
+        }
+
+        .service-name {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .service-status {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.15rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .service-port {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        .section-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 1.25rem;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .endpoints-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            margin-bottom: 2.5rem;
+        }
+
+        .endpoint-item {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            border-radius: 16px;
+            padding: 1.25rem;
+        }
+
+        .endpoint-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+
+        .endpoint-route {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 600;
+        }
+
+        .method {
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .method.post {
+            background: var(--primary-glow);
+            color: var(--primary);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+
+        .method.get {
+            background: var(--accent-glow);
+            color: var(--accent);
+            border: 1px solid rgba(129, 140, 248, 0.2);
+        }
+
+        .route-path {
+            font-size: 0.95rem;
+            color: var(--text-primary);
+        }
+
+        .endpoint-desc {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+        }
+
+        .code-block-wrapper {
+            position: relative;
+            background: #020617;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .code-block {
+            font-family: 'Consolas', 'Courier New', Courier, monospace;
+            font-size: 0.825rem;
+            padding: 1rem;
+            overflow-x: auto;
+            color: #e2e8f0;
+            white-space: pre;
+        }
+
+        .copy-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: var(--text-secondary);
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .copy-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-primary);
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        /* Interactive Test Client section */
+        .interactive-section {
+            background: rgba(129, 140, 248, 0.02);
+            border: 1px solid rgba(129, 140, 248, 0.08);
+            border-radius: 20px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .interactive-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+        }
+
+        .btn-test {
+            background: var(--accent);
+            color: #020617;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 14px rgba(129, 140, 248, 0.3);
+        }
+
+        .btn-test:hover {
+            background: #a5b4fc;
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(129, 140, 248, 0.4);
+        }
+
+        .btn-test:active {
+            transform: translateY(1px);
+        }
+
+        .test-output {
+            margin-top: 1rem;
+            background: #020617;
+            border: 1px solid rgba(129, 140, 248, 0.15);
+            border-radius: 10px;
+            padding: 1rem;
+            min-height: 50px;
+            display: flex;
+            align-items: center;
+            font-family: 'Consolas', 'Courier New', Courier, monospace;
+            font-size: 0.825rem;
+            color: #818cf8;
+            overflow-x: auto;
+        }
+
+        .footer {
+            margin-top: 2rem;
+            text-align: center;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            width: 100%;
+        }
+
+        .footer a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: color 0.2s ease;
+        }
+
+        .footer a:hover {
+            color: var(--primary);
+        }
+
+        /* Responsiveness */
+        @media (max-width: 640px) {
+            .dashboard-card {
+                padding: 1.75rem;
+                border-radius: 16px;
+            }
+            .header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 1rem;
+                margin-bottom: 2rem;
+                padding-bottom: 1.5rem;
+            }
+            .status-badge {
+                align-self: flex-start;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="glow-orb-1"></div>
+    <div class="glow-orb-2"></div>
+
+    <div class="container">
+        <div class="dashboard-card">
+            <header class="header">
+                <div class="brand">
+                    <div class="brand-logo">UA</div>
+                    <div class="title-area">
+                        <h1>User Activity Service</h1>
+                        <p>Event-Driven Event Ingestion & Processing Pipeline</p>
+                    </div>
+                </div>
+                <div class="status-badge">
+                    <span class="status-dot"></span>
+                    <span>ONLINE</span>
+                </div>
+            </header>
+
+            <section>
+                <h2 class="section-title">System Status</h2>
+                <div class="services-grid">
+                    <div class="service-card">
+                        <span class="service-name">API Server</span>
+                        <div class="service-status" style="color: var(--primary);">
+                            <span class="status-dot"></span>
+                            Healthy
+                        </div>
+                        <span class="service-port">Listening on Port 3000</span>
+                    </div>
+                    <div class="service-card">
+                        <span class="service-name">RabbitMQ Queue</span>
+                        <div class="service-status" style="color: var(--accent);">
+                            <span class="status-dot" style="background-color: var(--accent); box-shadow: 0 0 10px var(--accent); animation: none;"></span>
+                            Durable
+                        </div>
+                        <span class="service-port">Connected to RabbitMQ</span>
+                    </div>
+                    <div class="service-card">
+                        <span class="service-name">Rate Limiter</span>
+                        <div class="service-status" style="color: var(--warning);">
+                            <span class="status-dot" style="background-color: var(--warning); box-shadow: 0 0 10px var(--warning); animation: none;"></span>
+                            Sliding Window
+                        </div>
+                        <span class="service-port">Redis-backed</span>
+                    </div>
+                </div>
+            </section>
+
+            <section>
+                <h2 class="section-title">Interactive Health Check</h2>
+                <div class="interactive-section">
+                    <div class="interactive-header">
+                        <p style="color: var(--text-secondary); font-size: 0.9rem;">Test the connectivity and response of the API service status dynamically.</p>
+                        <button class="btn-test" id="btnTest">Run Check</button>
+                    </div>
+                    <div class="test-output" id="testOutput">Click "Run Check" to test query...</div>
+                </div>
+            </section>
+
+            <section>
+                <h2 class="section-title">API Endpoints</h2>
+                <div class="endpoints-list">
+                    <!-- GET /health -->
+                    <div class="endpoint-item">
+                        <div class="endpoint-header">
+                            <div class="endpoint-route">
+                                <span class="method get">GET</span>
+                                <span class="route-path">/health</span>
+                            </div>
+                            <span style="font-size: 0.75rem; color: var(--text-muted);">Docker Compose Healthcheck</span>
+                        </div>
+                        <p class="endpoint-desc">Retrieves the status indicator of the API worker.</p>
+                        <div class="code-block-wrapper">
+                            <button class="copy-btn" onclick="copyCode('curlHealth')">Copy curl</button>
+                            <div class="code-block" id="curlHealth">curl http://localhost:3000/health</div>
+                        </div>
+                    </div>
+
+                    <!-- POST /api/v1/activities -->
+                    <div class="endpoint-item">
+                        <div class="endpoint-header">
+                            <div class="endpoint-route">
+                                <span class="method post">POST</span>
+                                <span class="route-path">/api/v1/activities</span>
+                            </div>
+                            <span style="font-size: 0.75rem; color: var(--text-muted);">Rate limit: 50 req/min</span>
+                        </div>
+                        <p class="endpoint-desc">Ingests user activity events. Standard JSON body required.</p>
+                        <div class="code-block-wrapper">
+                            <button class="copy-btn" onclick="copyCode('curlActivities')">Copy curl</button>
+                            <div class="code-block" id="curlActivities">curl -X POST http://localhost:3000/api/v1/activities \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": "a1b2c3d4-e5f6-7890-1234-567890abcdef",
+    "eventType": "user_login",
+    "timestamp": "2023-10-27T10:00:00Z",
+    "payload": { "ipAddress": "192.168.1.1", "device": "desktop" }
+  }'</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <footer class="footer">
+            <p>User Activity Service Dashboard &bull; Orchestrated with Node.js, RabbitMQ, MongoDB & Redis</p>
+            <p style="margin-top: 6px;"><a href="https://github.com/Shanmuka-p/User_Activity_Service" target="_blank">Documentation (README.md)</a></p>
+        </footer>
+    </div>
+
+    <script>
+        // Copy to clipboard
+        function copyCode(elementId) {
+            const codeText = document.getElementById(elementId).innerText;
+            navigator.clipboard.writeText(codeText).then(() => {
+                const btn = document.querySelector(`#${elementId} ~ .copy-btn`) || document.querySelector(`[onclick="copyCode('${elementId}')"]`);
+                const originalText = btn.innerText;
+                btn.innerText = 'Copied!';
+                btn.style.background = 'var(--primary-glow)';
+                btn.style.color = 'var(--primary)';
+                btn.style.borderColor = 'rgba(16, 185, 129, 0.3)';
+                setTimeout(() => {
+                    btn.innerText = originalText;
+                    btn.style.background = '';
+                    btn.style.color = '';
+                    btn.style.borderColor = '';
+                }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy: ', err);
+            });
+        }
+
+        // Run interactive test
+        const btnTest = document.getElementById('btnTest');
+        const testOutput = document.getElementById('testOutput');
+
+        btnTest.addEventListener('click', async () => {
+            testOutput.style.color = '#818cf8';
+            testOutput.innerText = 'Requesting GET /health...';
+            try {
+                const startTime = performance.now();
+                const response = await fetch('/health');
+                const data = await response.json();
+                const duration = Math.round(performance.now() - startTime);
+                
+                testOutput.style.color = 'var(--primary)';
+                testOutput.innerHTML = `HTTP/${response.status} OK (${duration}ms)\n\n${JSON.stringify(data, null, 2)}`;
+            } catch (error) {
+                testOutput.style.color = 'var(--danger)';
+                testOutput.innerText = 'Failed to connect to /health: ' + error.message;
+            }
+        });
+    </script>
+</body>
+</html>
